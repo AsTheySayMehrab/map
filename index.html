@@ -101,20 +101,24 @@
       // ارسال درخواست به API
       axios.get(url, params)
         .then(data => {
-          var lat = data.data.location.y;  // عرض جغرافیایی
-          var lng = data.data.location.x;  // طول جغرافیایی
-          log.textContent = `مختصات: ${lat}, ${lng}`;  // نمایش مختصات
-          
-          // به‌روزرسانی موقعیت مارکر
-          marker.setLatLng([lat, lng]);
-          marker.bindPopup(address).openPopup();
+          if (data.data.results && data.data.results.length > 0) {
+            var lat = data.data.results[0].location.y;  // عرض جغرافیایی
+            var lng = data.data.results[0].location.x;  // طول جغرافیایی
+            log.textContent = `مختصات: ${lat}, ${lng}`;  // نمایش مختصات
+            
+            // به‌روزرسانی موقعیت مارکر
+            marker.setLatLng([lat, lng]);
+            marker.bindPopup(address).openPopup();
 
-          // تنظیم مرکز نقشه بر اساس آدرس جدید
-          myMap.flyTo([lat, lng], 15);
+            // تنظیم مرکز نقشه بر اساس آدرس جدید
+            myMap.flyTo([lat, lng], 15);
+          } else {
+            log.textContent = "مکان پیدا نشد. لطفاً آدرس دقیق‌تری وارد کنید.";
+          }
         })
         .catch(err => {
           console.log("خطا: " + err);
-          log.textContent = "مکان پیدا نشد.";
+          log.textContent = "مشکلی در ارسال درخواست به API پیش آمده است.";
         });
     }
   </script>
