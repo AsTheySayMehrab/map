@@ -8,28 +8,23 @@
     body {
       font-family: Arial, sans-serif;
       direction: rtl;
-      background-color: #f4f4f9;
       margin: 0;
       padding: 0;
     }
 
-    header {
-      background-color: #4CAF50;
-      color: white;
-      text-align: center;
-      padding: 1rem;
+    #map {
+      height: 400px;
+      width: 100%;
     }
 
     .container {
-      max-width: 800px;
-      margin: 2rem auto;
-      padding: 1rem;
+      padding: 20px;
       background-color: white;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      text-align: center;
     }
 
     input[type="text"] {
-      width: 100%;
+      width: 80%;
       padding: 0.8rem;
       margin: 1rem 0;
       border: 1px solid #ccc;
@@ -38,7 +33,7 @@
     }
 
     button {
-      width: 100%;
+      width: 80%;
       padding: 0.8rem;
       background-color: #4CAF50;
       color: white;
@@ -52,79 +47,74 @@
       background-color: #45a049;
     }
 
-    .results {
-      margin-top: 2rem;
-    }
-
-    .result-item {
-      padding: 1rem;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      margin-bottom: 1rem;
-      background-color: #f9f9f9;
-    }
-
-    .result-item h3 {
-      margin: 0;
+    #log {
+      margin-top: 20px;
       font-size: 1.2rem;
-    }
-
-    .result-item p {
-      margin: 0.5rem 0;
-      font-size: 1rem;
     }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>جستجوی موقعیت با Geocoding API نشان</h1>
-  </header>
-
   <div class="container">
-    <input type="text" id="searchTerm" placeholder="نام مکان را وارد کنید...">
-    <button onclick="geocodeLocation()">جستجو</button>
-
-    <div class="results" id="results"></div>
+    <h1>جستجوی موقعیت با Geocoding API نشان</h1>
+    <input type="text" id="address" placeholder="نام مکان را وارد کنید...">
+    <button onclick="geocoding()">جستجو</button>
+    <p id="log"></p>
   </div>
 
-  <script>
-    const apiKey = 'service.390f252ccb1842f5a93c56914ad9a95e'; // کلید API خود را اینجا وارد کنید
+  <div id="map"></div>
 
-    function geocodeLocation() {
-      const searchTerm = document.getElementById('searchTerm').value.trim();
-      if (!searchTerm) {
-        alert('لطفاً نام مکان را وارد کنید.');
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script>
+    // ایجاد نقشه
+    var myMap = new L.Map('map', {
+      key: 'service.390f252ccb1842f5a93c56914ad9a95e', // کلید API شما
+      maptype: 'dreamy',   // نوع نقشه
+      poi: true,           // نمایش POI
+      traffic: false,      // غیرفعال کردن ترافیک
+      center: [35.699739, 51.338097], // مختصات شروع
+      zoom: 14             // میزان بزرگنمایی
+    });
+
+    // افزودن مارکر به نقشه
+    var marker = L.marker([35.699739, 51.338097]).addTo(myMap);
+
+    // تابع جستجو با Geocoding API
+    function geocoding() {
+      var log = document.getElementById("log");
+      var address = document.getElementById("address").value.trim();
+      
+      if (!address) {
+        alert("لطفاً نام مکان را وارد کنید.");
         return;
       }
 
-      const url = `https://api.neshan.org/v2/geocode?address=${encodeURIComponent(searchTerm)}`;
-      const headers = {
-        'Api-Key': apiKey
+      // ساختن URL برای ارسال درخواست
+      var url = `https://api.neshan.org/v4/geocoding?address=${encodeURIComponent(address)}`;
+      var params = {
+        headers: {
+          'Api-Key': 'service.390f252ccb1842f5a93c56914ad9a95e' // کلید API شما
+        }
       };
 
-      fetch(url, { method: 'GET', headers: headers })
-        .then(response => response.json())
+      // ارسال درخواست به API
+      axios.get(url, params)
         .then(data => {
-          const resultsDiv = document.getElementById('results');
-          resultsDiv.innerHTML = '';  // پاک کردن نتایج قبلی
+          var lat = data.data.location.y;  // عرض جغرافیایی
+          var lng = data.data.location.x;  // طول جغرافیایی
+          log.textContent = `مختصات: ${lat}, ${lng}`;  // نمایش مختصات
+          
+          // به‌روزرسانی موقعیت مارکر
+          marker.setLatLng([lat, lng]);
+          marker.bindPopup(address).openPopup();
 
-          if (data.results && data.results.length > 0) {
-            const item = data.results[0];  // فقط اولین نتیجه را نشان می‌دهیم
-            const resultItem = document.createElement('div');
-            resultItem.classList.add('result-item');
-            resultItem.innerHTML = `
-              <h3>${item.formatted_address}</h3>
-              <p>مختصات: ${item.location.lat}, ${item.location.lng}</p>
-            `;
-            resultsDiv.appendChild(resultItem);
-          } else {
-            resultsDiv.innerHTML = '<p>مکانی یافت نشد.</p>';
-          }
+          // تنظیم مرکز نقشه بر اساس آدرس جدید
+          myMap.flyTo([lat, lng], 15);
         })
-        .catch(error => {
-          console.error('خطا در ارسال درخواست:', error);
-          alert('خطا در ارسال درخواست.');
+        .catch(err => {
+          console.log("خطا: " + err);
+          log.textContent = "مکان پیدا نشد.";
         });
     }
   </script>
